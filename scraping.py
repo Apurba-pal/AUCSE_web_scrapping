@@ -23,7 +23,7 @@ soup = BeautifulSoup(response.text, "html.parser")
 wb = Workbook()
 sheet = wb.active
 sheet.title = "Scraped Data"
-sheet.append(["Sl No.", "Roll No.", "Name", "Specialization", "Batch", "Area of Interest"])
+sheet.append(["Sl No.", "Roll No.", "Name", "Specialization", "Batch", "Area of Interest", "Phone no.", "Status"])
 
 # Extracting data from HTML
 sections = soup.find_all("section", {"class": ["yaqOZd", "cJgDec", "tpmmCb"]})
@@ -40,8 +40,10 @@ for section in sections:
         specialization = "B.Tech. CSE (Core)"
     
     batch = "2022"  
+    phone_no = "00"
+    status = 1
     
-    sheet.append([sl_no, roll_number, name, specialization, batch, area_of_interest])
+    sheet.append([sl_no, roll_number, name, specialization, batch, area_of_interest, phone_no, status])
 
 # Save the data to an Excel file
 wb.save("college_data.xlsx")
