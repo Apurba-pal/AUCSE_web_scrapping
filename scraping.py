@@ -24,7 +24,7 @@ soup = BeautifulSoup(response.text, "html.parser")
 wb = Workbook()
 sheet = wb.active
 sheet.title = "Scraped Data"
-sheet.append(["Sl No.", "Roll No.", "Name", "Specialization", "Batch", "Area of Interest", "Phone no.", "Status", "Registration No"])
+sheet.append(["name", "student_id", "roll_no", "sec", "aoi", "phone", "email", "course", "year", "status"])
 
 # Extracting data from HTML
 sections = soup.find_all("section", {"class": ["yaqOZd", "cJgDec", "tpmmCb"]})
@@ -44,7 +44,7 @@ for section in sections:
     phone_no = "00"
     status = 1
     
-    sheet.append([sl_no, roll_number, name, specialization, batch, area_of_interest, phone_no, status, ""])
+    sheet.append([name, "", roll_number, "", area_of_interest, phone_no, "", specialization, batch, status])
 
 # Save the data to an Excel file
 wb.save("college_data.xlsx")
@@ -56,22 +56,27 @@ csv_files = [
     "Student list_SEC C.xlsx"
 ]
 
-# Create a mapping of Roll Number to Registration No
-roll_to_reg = {}
+# Create a mapping of Roll Number to Registration No, Section, Phone Number, and Email ID
+roll_to_reg_section_phone_email = {}
 for csv_file in csv_files:
     df = pd.read_excel(csv_file)
+    print(f"Columns in {csv_file}: {df.columns.tolist()}")  # Print columns for debugging
     for _, row in df.iterrows():
-        roll_to_reg[row['Roll Number']] = row['Registration No']
+        email_id = row['Email ID'] if 'Email ID' in df.columns else row['Email ID '] if 'Email ID ' in df.columns else ""
+        roll_to_reg_section_phone_email[row['Roll Number']] = (row['Registration No'], row['Section'], row['Phone Number'], email_id)
 
 # Load the college_data.xlsx file
 wb = load_workbook("college_data.xlsx")
 sheet = wb.active
 
-# Update the Registration No for each Roll Number
+# Update the Registration No, Section, Phone Number, and Email ID for each Roll Number
 for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column):
-    roll_number = row[1].value
-    if roll_number in roll_to_reg:
-        row[-1].value = roll_to_reg[roll_number]
+    roll_number = row[2].value
+    if roll_number in roll_to_reg_section_phone_email:
+        row[1].value = roll_to_reg_section_phone_email[roll_number][0]
+        row[3].value = roll_to_reg_section_phone_email[roll_number][1]
+        row[5].value = roll_to_reg_section_phone_email[roll_number][2]
+        row[6].value = roll_to_reg_section_phone_email[roll_number][3]
 
 # Save the updated Excel file
 wb.save("college_data_updated.xlsx")
