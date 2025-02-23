@@ -13,7 +13,7 @@ def scrape_students(url):
     soup = BeautifulSoup(response.content, 'html.parser')
     
     # Locate all student sections by the common classes
-    student_sections = soup.find_all('section', class_=["yaqOZd","cJgDec","tpmmCb"])
+    student_sections = soup.find_all('section', class_=["yaqOZd","cJgDec","tpmmCb","C9DxTc"])
     students = []
     
     for student in student_sections:
