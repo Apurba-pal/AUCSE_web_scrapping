@@ -40,14 +40,18 @@ def scrape_students(url):
         section = children[3].get_text(strip=True)
         name = children[4].get_text(strip=True)
         course = children[5].get_text(strip=True)
+        if course == "NA":
+            course = "B.Tech. CSE (Core)"
         area_of_interest = children[6].get_text(strip=True)
         
         student_info = {
             "name": name,
             "roll_no": roll_no,
-            "section": section,
+            "sec": section,
             "course": course,
-            "area_of_interest": area_of_interest,
+            "aoi": area_of_interest,
+            "year": 2023,
+            "status":1
         }
         students.append(student_info)
     
