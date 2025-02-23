@@ -1,83 +1,72 @@
-import os
 import requests
-from bs4 import BeautifulSoup
-from openpyxl import Workbook, load_workbook
 import pandas as pd
-from requests.exceptions import ConnectionError, Timeout, TooManyRedirects
+from bs4 import BeautifulSoup
 
-URL = "https://www.aucse.in/people/student/btech/cse-batch-2022-2026"
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
-}
-
-# Send GET request with error handling
-try:
-    response = requests.get(URL, headers=headers, timeout=10)
-    response.raise_for_status()
-except (ConnectionError, Timeout, TooManyRedirects) as e:
-    print(f"Error fetching the URL: {e}")
-    exit(1)
-
-soup = BeautifulSoup(response.text, "html.parser")
-
-# Create an Excel workbook
-wb = Workbook()
-sheet = wb.active
-sheet.title = "Scraped Data"
-sheet.append(["name", "student_id", "roll_no", "sec", "aoi", "phone", "email", "course", "year", "status"])
-
-# Extracting data from HTML
-sections = soup.find_all("section", {"class": ["yaqOZd", "cJgDec", "tpmmCb"]})
-for section in sections:
-    paragraphs = section.find_all("p", class_="zfr3Q CDt4Ke")
-    sl_no = paragraphs[0].text.strip() if len(paragraphs) > 0 else "N/A"
-    roll_number = paragraphs[1].text.strip() if len(paragraphs) > 1 else "N/A"
-    name = paragraphs[2].text.strip() if len(paragraphs) > 2 else "N/A"
-    specialization = paragraphs[3].text.strip() if len(paragraphs) > 3 else "N/A"
-    area_of_interest = paragraphs[4].text.strip() if len(paragraphs) > 4 else "N/A"
+def scrape_students(url):
+    # Fetch the webpage
+    response = requests.get(url)
+    if response.status_code != 200:
+        print("Error fetching the page:", response.status_code)
+        return []
     
-    # Replace "NA" with "B.Tech. CSE (Core)" in Specialization
-    if specialization == "NA":
-        specialization = "B.Tech. CSE (Core)"
+    # Parse the HTML content
+    soup = BeautifulSoup(response.content, 'html.parser')
     
-    batch = "2022"  
-    phone_no = "00"
-    status = 1
+    # Locate all student sections by the common classes
+    student_sections = soup.find_all('section', class_=["yaqOZd","cJgDec","tpmmCb"])
+    students = []
     
-    sheet.append([name, "", roll_number, "", area_of_interest, phone_no, "", specialization, batch, status])
+    for student in student_sections:
+        # Find the container with student details (using a class that is common among them)
+        container = student.find("div", class_=lambda c: c and "LS81yb" in c)
+        if not container:
+            continue
 
-# Save the data to an Excel file
-wb.save("college_data.xlsx")
+        # Get the immediate child div tags only (ignoring nested divs deeper in the tree)
+        children = [child for child in container.find_all("div", recursive=False)]
+        
+        # We expect at least 7 children:
+        # index 0: Serial number (ignore)
+        # index 1: Image container (ignore)
+        # index 2: Roll number
+        # index 3: Section
+        # index 4: Name
+        # index 5: Course
+        # index 6: Area of interest
+        if len(children) < 7:
+            continue
+        
+        roll_no = children[2].get_text(strip=True)
+        section = children[3].get_text(strip=True)
+        name = children[4].get_text(strip=True)
+        course = children[5].get_text(strip=True)
+        area_of_interest = children[6].get_text(strip=True)
+        
+        student_info = {
+            "name": name,
+            "roll_no": roll_no,
+            "section": section,
+            "course": course,
+            "area_of_interest": area_of_interest,
+        }
+        students.append(student_info)
+    
+    return students
 
-# Load the CSV files
-csv_files = [
-    "B Tech CSE6th Sem Sec-B_final.xlsx",
-    "SecA_Student's information 22-23.xlsx",
-    "Student list_SEC C.xlsx"
-]
+def write_to_excel(students, filename="college_data_2023_27.xlsx"):
+    # Convert the list of student dictionaries to a DataFrame
+    df = pd.DataFrame(students)
+    # Write the DataFrame to an Excel file without the index
+    df.to_excel(filename, index=False)
+    print(f"Data successfully written to {filename}")
 
-# Create a mapping of Roll Number to Registration No, Section, Phone Number, and Email ID
-roll_to_reg_section_phone_email = {}
-for csv_file in csv_files:
-    df = pd.read_excel(csv_file)
-    print(f"Columns in {csv_file}: {df.columns.tolist()}")  # Print columns for debugging
-    for _, row in df.iterrows():
-        email_id = row['Email ID'] if 'Email ID' in df.columns else row['Email ID '] if 'Email ID ' in df.columns else ""
-        roll_to_reg_section_phone_email[row['Roll Number']] = (row['Registration No'], row['Section'], row['Phone Number'], email_id)
-
-# Load the college_data.xlsx file
-wb = load_workbook("college_data.xlsx")
-sheet = wb.active
-
-# Update the Registration No, Section, Phone Number, and Email ID for each Roll Number
-for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column):
-    roll_number = row[2].value
-    if roll_number in roll_to_reg_section_phone_email:
-        row[1].value = roll_to_reg_section_phone_email[roll_number][0]
-        row[3].value = roll_to_reg_section_phone_email[roll_number][1]
-        row[5].value = roll_to_reg_section_phone_email[roll_number][2]
-        row[6].value = roll_to_reg_section_phone_email[roll_number][3]
-
-# Save the updated Excel file
-wb.save("college_data_updated.xlsx")
-print("Data successfully scraped and saved to college_data_updated.xlsx")
+if __name__ == '__main__':
+    url = "https://www.aucse.in/people/student/btech/cse-batch-2023-2027"
+    student_data = scrape_students(url)
+    
+    # Optionally print out the scraped student data for verification
+    for student in student_data:
+        print(student)
+    
+    # Write the scraped data to the Excel file
+    write_to_excel(student_data)
