@@ -1,5 +1,6 @@
 # for 23-27
 
+import os
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -66,6 +67,27 @@ def write_to_excel(students, filename="college_data_2023_27.xlsx"):
     df.to_excel(filename, index=False)
     print(f"Data successfully written to {filename}")
 
+def update_student_info_from_csv(students, csv_files):
+    # Create a mapping of Roll Number to Registration No, Mobile, and Email
+    roll_to_info = {}
+    for csv_file in csv_files:
+        df = pd.read_excel(csv_file) if csv_file.endswith('.xlsx') else pd.read_csv(csv_file)
+        for _, row in df.iterrows():
+            email = row['Email'] if 'Email' in df.columns else None
+            roll_to_info[row['Roll No.']] = {
+                'Registration No': row['Registration ID.'],
+                'Mobile': row['Mobile'],
+                'Email': email
+            }
+
+    # Update the student information with the data from the CSV files
+    for student in students:
+        roll_no = student['roll_no']
+        if roll_no in roll_to_info:
+            student.update(roll_to_info[roll_no])
+
+    return students
+
 if __name__ == '__main__':
     url = "https://www.aucse.in/people/student/btech/cse-batch-2023-2027"
     student_data = scrape_students(url)
@@ -74,5 +96,17 @@ if __name__ == '__main__':
     for student in student_data:
         print(student)
     
-    # Write the scraped data to the Excel file
-    write_to_excel(student_data)
+    # CSV files containing additional student information
+    csv_files = [
+        "23_27_csv/23_sec_A.xlsx",
+        "23_27_csv/23_sec_B.xlsx",
+        "23_27_csv/23_sec_C.xlsx",
+        "23_27_csv/23_sec_D.xlsx",
+        "23_27_csv/23_sec_E.xlsx"
+    ]
+    
+    # Update student data with information from CSV files
+    updated_student_data = update_student_info_from_csv(student_data, csv_files)
+    
+    # Write the updated data to the Excel file
+    write_to_excel(updated_student_data)
